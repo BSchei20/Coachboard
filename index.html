@@ -1,39 +1,58 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; background: #81b1d5; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        #controls { padding: 10px; background: #2c3e50; color: white; width: 100%; text-align: center; }
+        #header { 
+            background: #2c3e50; color: white; width: 100%; padding: 10px 0; 
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .scoreboard { display: flex; gap: 20px; font-weight: bold; align-items: center; }
+        .score-box { text-align: center; }
+        .score-num { font-size: 24px; display: block; }
+        .blue-text { color: #3498db; }
+        .red-text { color: #e74c3c; }
+        
+        #controls { padding: 10px; background: #34495e; width: 100%; text-align: center; }
+        button { padding: 8px 12px; margin: 0 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+
         #field { 
             position: relative; width: 350px; height: 550px; background: #5a9c3f; 
-            border: 5px solid white; margin-top: 20px; border-radius: 10px; overflow: hidden;
+            border: 5px solid white; margin-top: 10px; border-radius: 10px; overflow: hidden;
             background-image: linear-gradient(#5a9c3f 50%, #4e8a35 50%); background-size: 100% 80px;
         }
-        /* Field Markings */
-        .line { position: absolute; border: 2px solid white; }
+        .line { position: absolute; border: 2px solid white; pointer-events: none; }
         .center-circle { width: 80px; height: 80px; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         .half-line { width: 100%; top: 50%; height: 0; }
         .goal-box { width: 120px; height: 50px; left: 50%; transform: translateX(-50%); }
         .top-goal { top: 0; border-top: none; }
         .bot-goal { bottom: 0; border-bottom: none; }
 
-        /* Players & Ball */
         .piece { 
-            position: absolute; width: 35px; height: 35px; border-radius: 50%; 
+            position: absolute; width: 38px; height: 38px; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; color: white; border: 3px solid #333; cursor: grab; z-index: 10;
-            touch-action: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            font-weight: bold; color: white; border: 3px solid #222; z-index: 10;
+            touch-action: none; box-shadow: 0 4px 6px rgba(0,0,0,0.4); font-size: 18px;
         }
         .red { background: #e74c3c; }
         .blue { background: #3498db; }
-        .ball { width: 20px; height: 20px; background: white; border-radius: 50%; border: 2px solid black; z-index: 11; }
+        .ball { width: 22px; height: 22px; background: white; border-radius: 50%; border: 2px solid black; z-index: 11; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
+<div id="header">
+    <div style="font-size: 10px; opacity: 0.8;">MEDIUM</div>
+    <div class="scoreboard">
+        <div class="score-box"><span class="blue-text">YOU</span><span class="score-num blue-text">0</span></div>
+        <div>VS</div>
+        <div class="score-box"><span class="red-text">BOT</span><span class="score-num red-text">0</span></div>
+    </div>
+</div>
+
 <div id="controls">
-    <button onclick="setupField(5)">5 vs 5</button>
+    <button onclick="setupField(6)">6 vs 6</button>
     <button onclick="setupField(9)">9 vs 9</button>
     <button onclick="setupField(11)">11 vs 11</button>
 </div>
@@ -43,28 +62,27 @@
     <div class="line center-circle"></div>
     <div class="line goal-box top-goal"></div>
     <div class="line goal-box bot-goal"></div>
-    
     <div id="pieces-layer"></div>
 </div>
 
 <script>
     const layer = document.getElementById('pieces-layer');
+    const field = document.getElementById('field');
 
     function createPiece(type, num, x, y) {
         const p = document.createElement('div');
         p.className = `piece ${type}`;
-        if (type === 'ball') p.className = 'piece ball';
-        else p.innerText = num;
+        if (type !== 'ball') p.innerText = num;
         
         p.style.left = x + 'px';
         p.style.top = y + 'px';
         
-        // Drag Logic
         p.onpointerdown = (e) => {
             p.setPointerCapture(e.pointerId);
             p.onpointermove = (ev) => {
-                p.style.left = (ev.clientX - field.offsetLeft - 17) + 'px';
-                p.style.top = (ev.clientY - field.offsetTop - 17) + 'px';
+                const rect = field.getBoundingClientRect();
+                p.style.left = (ev.clientX - rect.left - (p.offsetWidth/2)) + 'px';
+                p.style.top = (ev.clientY - rect.top - (p.offsetHeight/2)) + 'px';
             };
             p.onpointerup = () => { p.onpointermove = null; };
         };
@@ -73,16 +91,18 @@
 
     function setupField(players) {
         layer.innerHTML = '';
-        // Create Ball
-        createPiece('ball', '', 165, 265);
-        // Create Teams
+        // Ball in center
+        createPiece('ball', '', 164, 264);
+        
         for(let i=1; i<=players; i++) {
-            createPiece('red', i, 20 + (i*20 % 300), 400 + (i*5));
-            createPiece('blue', i, 20 + (i*20 % 300), 50 + (i*5));
+            // Blue Team (Top) - Labeled 1 to 11
+            createPiece('blue', i, 20 + (i*25 % 280), 60 + (Math.floor(i/4)*40));
+            // Red Team (Bottom) - Labeled 1 to 11
+            createPiece('red', i, 20 + (i*25 % 280), 400 - (Math.floor(i/4)*40));
         }
     }
 
-    setupField(5); // Default start
+    setupField(6); // Default to 6v6
 </script>
 </body>
 </html>
